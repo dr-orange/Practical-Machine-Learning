@@ -105,7 +105,7 @@ Test our model performance on cross validation set.
 predictRf <- predict(rf, testData, type = "class")
 confusionMatrix(predictRf, testData$classe)
 ```
-Accuracy for Random Forest model was 0.9895. It's a very high accuracy, but we will try another model for confirmation in next section.
+Accuracy for Random Forest model was 0.9901. It's a very high accuracy, but we will try another model for confirmation in next section.
 
 Let's also look at the importance of each explanatory variable.
 ```{r}
@@ -128,14 +128,16 @@ Test our model performance on cross validation set.
 predictDt <- predict(dt, testData, type = "class")
 confusionMatrix(predictDt, testData$classe)
 ```
-Accuracy for Decision Tree model was 0.7341. It was not good value.
+Accuracy for Decision Tree model was 0.7362. It was not good value.
 
 ```{r, message=FALSE}
 library(rpart.plot)
 ```
-```{r, fig.width= 40}
+```{r}
 rpart.plot(dt, main = "Classification Tree", under = TRUE, faclen = 0)
 ```
+
+
 
 ## Applying prediction model
 Applying prediction model to test data set.
