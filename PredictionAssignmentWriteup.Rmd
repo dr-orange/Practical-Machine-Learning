@@ -1,0 +1,154 @@
+---
+title: "Prediction Assignment Writeup"
+author: "Koji"
+date: "2018/7/22"
+output:
+  html_document: default
+---
+
+## Synopsis
+
+This project writeup: how you built your model, how you used cross validation, what you think the expected out of sample error is, and why you made the choices you did. You will also use your prediction model to predict 20 different test cases.
+
+## Data Source
+
+### Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+The training data for this project are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv [Mirror site]
+
+The test data are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv [Mirror site]
+
+## Data Prosessing
+
+### Load Packages
+
+```{r, message=FALSE}
+library(caret)
+
+set.seed(3301)
+```
+
+### Read and PreProsessing Data
+```{r}
+pmlTraining <- read.csv("./data/pml-training.csv", na.strings = c("", "NA", "#DIV/0!"))
+pmlTesting <- read.csv("./data/pml-testing.csv", na.strings = c("", "NA", "#DIV/0!"))
+
+dim(pmlTraining)
+dim(pmlTesting)
+```
+
+```{r}
+table(pmlTraining$classe)
+```
+Any columns that will not be needed for the final analysis will be removed to make the dataset easy to use.
+```{r}
+noUseColumns = c(1:7, 12:36, 50:59, 69:83, 87:101, 103:112, 125:139, 141:150)
+pmlTraining <- pmlTraining[, -noUseColumns]
+pmlTesting <- pmlTesting[, -noUseColumns]
+```
+
+Extract testing data from `pml-training.csv`.
+```{r}
+index <- createDataPartition(pmlTraining$classe, p = .8, list = FALSE)
+trainData <- pmlTraining[index, ]
+testData <- pmlTraining[-index, ]
+```
+
+## Prediction Model Building
+
+### Random Forest
+
+```{r, message=FALSE}
+library(randomForest)
+```
+
+Find best value of mtry.
+```{r}
+# Note that this function takes about 20 minutes. The results were below.
+# tuneRF(trainData[, -1], trainData[, 1], doBest = TRUE)
+
+# mtry = 17  OOB error = 0.6441513 
+# Searching left ...
+# mtry = 9 	OOB error = 0.6222891 
+# 0.03393964 0.05 
+# Searching right ...
+# mtry = 34 	OOB error = 0.4463682 
+# 0.3070446 0.05 
+# mtry = 52 	OOB error = 0.439003 
+# 0.01650017 0.05 
+# 
+# Call:
+#  randomForest(x = x, y = y, mtry = res[which.min(res[, 2]), 1]) 
+#                Type of random forest: regression
+#                      Number of trees: 500
+# No. of variables tried at each split: 52
+# 
+#           Mean of squared residuals: 0.3351257
+#                     % Var explained: 99.99
+```
+
+Make a predict model using a random forest.
+```{r}
+rf <- randomForest(classe ~ ., data = trainData, mtry = 52)
+
+plot(rf)
+```
+
+Test our model performance on cross validation set.
+```{r}
+predictRf <- predict(rf, testData, type = "class")
+confusionMatrix(predictRf, testData$classe)
+```
+Accuracy for Random Forest model was 0.9895. It's a very high accuracy, but we will try another model for confirmation in next section.
+
+Let's also look at the importance of each explanatory variable.
+```{r}
+importance(rf)
+```
+
+### Decision Tree
+
+```{r, message=FALSE}
+library(rpart)
+```
+
+Make a predict model using a decision tree.
+```{r}
+dt <- rpart(classe ~ ., data = trainData, method = "class")
+```
+
+Test our model performance on cross validation set.
+```{r}
+predictDt <- predict(dt, testData, type = "class")
+confusionMatrix(predictDt, testData$classe)
+```
+Accuracy for Decision Tree model was 0.7341. It was not good value.
+
+```{r, message=FALSE}
+library(rpart.plot)
+```
+```{r, fig.width= 40}
+rpart.plot(dt, main = "Classification Tree", under = TRUE, faclen = 0)
+```
+
+## Applying prediction model
+Applying prediction model to test data set.
+```{r}
+predict(rf, pmlTesting, type = "class")
+```
+
+## References
+
+1. Groupware@LES Projects Human Activity Recognition
+http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har
+
+2. Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. [Qualitative Activity Recognition of Weight Lifting Exercises](http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/work.jsf?p1=11201). Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human '13) . Stuttgart, Germany: ACM SIGCHI, 2013.
+
+3. Ugulino, W.; Cardador, D.; Vega, K.; Velloso, E.; Milidiu, R.; Fuks, H. [Wearable Computing: Accelerometers' Data Classification of Body Postures and Movements](http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/work.jsf?p1=10335). Proceedings of 21st Brazilian Symposium on Artificial Intelligence. Advances in Artificial Intelligence - SBIA 2012. In: Lecture Notes in Computer Science. , pp. 52-61. Curitiba, PR: Springer Berlin / Heidelberg, 2012. ISBN 978-3-642-34458-9. DOI: 10.1007/978-3-642-34459-6_6. 
+Cited by 2 (Google Scholar)
